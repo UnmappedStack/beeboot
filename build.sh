@@ -1,9 +1,14 @@
 #!/bin/bash
 set -e
 
+if [ ! -d "posix-uefi" ]; then
+    git clone https://gitlab.com/bztsrc/posix-uefi.git
+fi
+
 if [ ! -L "uefi" ]; then
     ln -s posix-uefi/uefi
 fi
+
 make
 dd if=/dev/zero of=disk.img bs=1k count=1440
 mformat -i disk.img -f 1440 ::

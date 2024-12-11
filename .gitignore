@@ -2,3 +2,4 @@
 BOOTX64.EFI
 *.img
 uefi
+posix-uefi/
