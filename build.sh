@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+if [ ! -L "uefi" ]; then
+    ln -s posix-uefi/uefi
+fi
 make
 dd if=/dev/zero of=disk.img bs=1k count=1440
 mformat -i disk.img -f 1440 ::

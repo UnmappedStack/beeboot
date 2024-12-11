@@ -1,3 +1,4 @@
 *.o
 BOOTX64.EFI
 *.img
+uefi
