@@ -66,9 +66,17 @@ void test_filesystem() {
     printf("Read file, got contents: %s\n", buf);
 }
 
+void test_uefi_api() {
+    printf("[TEST] Testing UEFI API...\n");
+    printf("System table address: %p\n", ST);
+    printf("Boot services table address: %p\n", ST->BootServices);
+    printf("Runtime services table address: %p\n", ST->RuntimeServices);
+}
+
 int main(int argc, char **argv) {
     test_filesystem();
     display_memmap();
+    test_uefi_api();
     for (;;);
     return 0;
 }
