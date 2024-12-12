@@ -23,7 +23,7 @@ const char *types[] = {
 };
 
 void display_memmap() {
-    printf("[TEST] Getting memory map (showing only 10 entries)...\n");
+    printf("[TEST] Getting memory map (showing only 5 entries)...\n");
     efi_memory_descriptor_t *memory_map = NULL, *mement;
     uintn_t memory_map_size = 0, map_key = 0, desc_size = 0;
     efi_status_t status = BS->GetMemoryMap(&memory_map_size, NULL, &map_key, &desc_size, NULL);
@@ -42,7 +42,7 @@ void display_memmap() {
     size_t i = 0;
     for(mement = memory_map; (uint8_t*) mement < (uint8_t*) memory_map + memory_map_size;
         mement = NextMemoryDescriptor(mement, desc_size)) {
-            if (i > 10) break;
+            if (i > 5) break;
             printf("%016x %8d %02x %s\n", mement->PhysicalStart, mement->NumberOfPages, mement->Type, types[mement->Type]);
             i++;
     }
@@ -63,14 +63,14 @@ void test_filesystem() {
     fread(buf, len, 1, f);
     buf[len] = 0;
     fclose(f);
-    printf("Read file, got contents: %s\n", buf);
+    printf("Read file, got contents: %s", buf);
 }
 
 void test_uefi_api() {
     printf("[TEST] Testing UEFI API...\n");
-    printf("System table address: %p\n", ST);
-    printf("Boot services table address: %p\n", ST->BootServices);
-    printf("Runtime services table address: %p\n", ST->RuntimeServices);
+    printf("ST address: %p\n", ST);
+    printf("BST address: %p, ", ST->BootServices);
+    printf("RST address: %p\n", ST->RuntimeServices);
     efi_time_t time;
     efi_status_t status = ST->RuntimeServices->GetTime(&time, NULL);
     if (EFI_ERROR(status)) {
@@ -80,6 +80,9 @@ void test_uefi_api() {
     printf("Current time is %i:%i:%i on %i/%i/%i\n", 
             time.Hour, time.Minute, time.Second,
             time.Day, time.Month, time.Year);
+    uint64_t cr3;
+    asm volatile("mov %%cr3, %0" : "=r" (cr3));
+    printf("CR3 set by firmware: %p, memory is identity mapped on boot.\n", cr3);
 }
 
 int main(int argc, char **argv) {
