@@ -71,6 +71,15 @@ void test_uefi_api() {
     printf("System table address: %p\n", ST);
     printf("Boot services table address: %p\n", ST->BootServices);
     printf("Runtime services table address: %p\n", ST->RuntimeServices);
+    efi_time_t time;
+    efi_status_t status = ST->RuntimeServices->GetTime(&time, NULL);
+    if (EFI_ERROR(status)) {
+        printf("Failed to get current time from runtime services.\n");
+        for (;;);
+    }
+    printf("Current time is %i:%i:%i on %i/%i/%i\n", 
+            time.Hour, time.Minute, time.Second,
+            time.Day, time.Month, time.Year);
 }
 
 int main(int argc, char **argv) {
