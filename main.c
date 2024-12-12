@@ -4,6 +4,10 @@
  */
 
 #include <uefi.h>
+#include <page.h>
+
+#define kmalloc(p) \
+    malloc(p * PAGE_SIZE)
 
 const char *types[] = {
     "EfiReservedMemoryType",
@@ -85,10 +89,70 @@ void test_uefi_api() {
     printf("CR3 set by firmware: %p, memory is identity mapped on boot.\n", cr3);
 }
 
+void map_pages(uint64_t pml4_addr[], uint64_t virt_addr, uint64_t phys_addr, uint64_t num_pages, uint64_t flags) {
+    virt_addr &= ~TOPBITS;
+    uint64_t pml1 = (virt_addr >> 12) & 511;
+    uint64_t pml2 = (virt_addr >> (12 + 9)) & 511;
+    uint64_t pml3 = (virt_addr >> (12 + 18)) & 511;
+    uint64_t pml4 = (virt_addr >> (12 + 27)) & 511;
+    for (; pml4 < 512; pml4++) {
+        uint64_t *pml3_addr = NULL;
+        if (pml4_addr[pml4] == 0) {
+            pml4_addr[pml4] = (uint64_t)kmalloc(1);
+            pml3_addr = (uint64_t*)(pml4_addr[pml4]);
+            memset((uint8_t*)pml3_addr, 0, 4096);
+            pml4_addr[pml4] |= flags | KERNEL_PFLAG_PRESENT | KERNEL_PFLAG_WRITE;
+        } else {
+            pml3_addr = (uint64_t*)(PAGE_ALIGN_DOWN(pml4_addr[pml4]));
+        }
+        
+        for (; pml3 < 512; pml3++) {
+            uint64_t *pml2_addr = NULL;
+            if (pml3_addr[pml3] == 0) {
+                pml3_addr[pml3] = (uint64_t)kmalloc(1);
+                pml2_addr = (uint64_t*)(pml3_addr[pml3]);
+                memset((uint8_t*)pml2_addr, 0, 4096);
+                pml3_addr[pml3] |= flags | KERNEL_PFLAG_PRESENT | KERNEL_PFLAG_WRITE;
+            } else {
+                pml2_addr = (uint64_t*)(PAGE_ALIGN_DOWN(pml3_addr[pml3]));
+            }
+
+            for (; pml2 < 512; pml2++) {
+                uint64_t *pml1_addr = NULL;
+                if (pml2_addr[pml2] == 0) {
+                    pml2_addr[pml2] = (uint64_t)kmalloc(1);
+                    pml1_addr = (uint64_t*)(pml2_addr[pml2]);
+                    memset((uint8_t*)pml1_addr, 0, 4096);
+                    pml2_addr[pml2] |= flags | KERNEL_PFLAG_PRESENT | KERNEL_PFLAG_WRITE;
+                } else {
+                    pml1_addr = (uint64_t*)(PAGE_ALIGN_DOWN(pml2_addr[pml2]));
+                }
+                for (; pml1 < 512; pml1++) {
+                    pml1_addr[pml1] = phys_addr | flags;
+                    num_pages--;
+                    phys_addr += 4096;
+                    if (num_pages == 0) return;
+                }
+                pml1 = 0;
+            }
+            pml2 = 0;
+        }
+        pml3 = 0;
+    }
+    printf("\n[PANIC] Failed to allocate pages: No more avaliable virtual memory. Halting.\n");
+    for (;;);
+} 
+
+
+void replace_page_tree() {
+    
+}
+
 int main(int argc, char **argv) {
     test_filesystem();
     display_memmap();
     test_uefi_api();
+    replace_page_tree();
     for (;;);
     return 0;
 }
